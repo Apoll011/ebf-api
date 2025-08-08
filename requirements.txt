@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+SQLAlchemy
+pydantic
+pydantic-settings
+alembic
+python-multipart
+sqlitecloud
+sqlalchemy-sqlitecloud
+numpy
+structlog
+python-jose[cryptography]
+bleach
+passlib

@@ -6,10 +6,12 @@ from .dependencies import get_db
 
 class StudentBase(BaseModel):
     name: str = Field(..., min_length=2, max_length=50)
+    notes: Optional[str] = Field(None, min_length=2, max_length=500)
     age: int = Field(..., ge=0, le=18)
     gender: str
     parent_name: Optional[str] = Field(None, min_length=2, max_length=50)
     parent_phone: Optional[str] = None
+    address: Optional[str] = None
 
     @validator('gender')
     def gender_must_be_valid(cls, v):

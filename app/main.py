@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List
 import structlog
@@ -14,9 +15,17 @@ setup_logging()
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="Student Management API",
+    title="EBF Management API",
     description="A simple API to manage students, points, and statistics.",
     version="1.0.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.middleware("http")

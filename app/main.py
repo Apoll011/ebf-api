@@ -62,7 +62,6 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 def create_student(student: schemas.StudentBase, db: Session = Depends(get_db), current_user: models.User = Depends(dependencies.get_current_user)):
     if current_user.role not in ["admin", "teacher"]:
         raise HTTPException(status_code=403, detail="Not enough permissions")
-    student = schemas.StudentCreate(**sanitized_body)
     return crud.create_student(db=db, student=student, user_id=current_user.id)
 
 @app.get("/students", response_model=List[schemas.StudentResponse])

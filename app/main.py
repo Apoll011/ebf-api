@@ -59,7 +59,7 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 
 # Student Management
 @app.post("/students", response_model=schemas.StudentResponse, status_code=201)
-def create_student(db: Session = Depends(get_db), current_user: models.User = Depends(dependencies.get_current_user), sanitized_body: dict = Depends(dependencies.sanitize_body)):
+def create_student(db: Session = Depends(get_db), current_user: models.User = Depends(dependencies.get_current_user), student: StudentBase):
     if current_user.role not in ["admin", "teacher"]:
         raise HTTPException(status_code=403, detail="Not enough permissions")
     student = schemas.StudentCreate(**sanitized_body)

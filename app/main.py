@@ -60,7 +60,7 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
 @app.get("/users", response_model=schemas.User, status_code=201)
 def get_user(username: str, db: Session = Depends(get_db)):
     db_user = crud.get_user_by_username(db, username=username)
-    return crud.create_user(db=db, user=db_user)
+    return db_user
 
 # Student Management
 @app.post("/students", response_model=schemas.StudentResponse, status_code=201)

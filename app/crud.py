@@ -126,9 +126,14 @@ def award_daily_points(db: Session, student_id: str, points_create: schemas.Poin
     if not student:
         return None
 
-    existing_points = db.query(models.Points).filter(models.Points.student_id == student_id, models.Points.award_date == points_create.award_date).first()
+    existing_points = db.query(models.Points).filter(
+        models.Points.student_id == student_id,
+        models.Points.award_date == points_create.award_date
+    ).first()
+
     if existing_points:
-        return "Points already awarded for this student on this date"
+        db.delete(existing_points)
+        db.commit()
 
     point_details = points_create.points
     total_daily_points = calculate_points(point_details)
@@ -144,12 +149,14 @@ def award_daily_points(db: Session, student_id: str, points_create: schemas.Poin
         game=point_details.game,
         total=total_daily_points
     )
+
     db.add(db_points)
     db.commit()
-    
-    recalculate_student_total_points(db, student_id)
+
+    recalculate_student_total_points(db, student_id) 
     db.refresh(student)
     return student
+
 
 def adjust_points(db: Session, student_id: str, adjustment: schemas.PointAdjustment, user_id: int):
     student = get_student(db, student_id)

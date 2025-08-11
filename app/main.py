@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List
 import structlog
@@ -14,9 +15,17 @@ setup_logging()
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="Student Management API",
+    title="EBF Management API",
     description="A simple API to manage students, points, and statistics.",
     version="1.0.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.middleware("http")
@@ -48,12 +57,16 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail="Username already registered")
     return crud.create_user(db=db, user=user)
 
+@app.get("/users")
+def get_user(username: str, db: Session = Depends(get_db)):
+    db_user = crud.get_user_by_username(db, username=username)
+    return db_user
+
 # Student Management
 @app.post("/students", response_model=schemas.StudentResponse, status_code=201)
-def create_student(db: Session = Depends(get_db), current_user: models.User = Depends(dependencies.get_current_user), sanitized_body: dict = Depends(dependencies.sanitize_body)):
+def create_student(student: schemas.StudentBase, db: Session = Depends(get_db), current_user: models.User = Depends(dependencies.get_current_user)):
     if current_user.role not in ["admin", "teacher"]:
         raise HTTPException(status_code=403, detail="Not enough permissions")
-    student = schemas.StudentCreate(**sanitized_body)
     return crud.create_student(db=db, student=student, user_id=current_user.id)
 
 @app.get("/students", response_model=List[schemas.StudentResponse])

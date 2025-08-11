@@ -14,14 +14,14 @@ class Settings(BaseSettings):
         "GAME": 15,
     }
 
-    AGE_GROUPS = {
+    AGE_GROUPS: dict = {
             "0-6": "Nursery",
             "7-9": "Beginners",
             "10-12": "Intermediate",
             "13-15": "Advanced"
     }
 
-    MAX_DAILY_POINTS = 165
+    MAX_DAILY_POINTS: int = 165
 
     class Config:
         env_file = ".env"

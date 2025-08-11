@@ -14,6 +14,15 @@ class Settings(BaseSettings):
         "GAME": 15,
     }
 
+    AGE_GROUPS = {
+            "0-6": "Nursery",
+            "7-9": "Beginners",
+            "10-12": "Intermediate",
+            "13-15": "Advanced"
+    }
+
+    MAX_DAILY_POINTS = 165
+
     class Config:
         env_file = ".env"
 

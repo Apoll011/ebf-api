@@ -356,8 +356,6 @@ def get_event_engagement(db: Session, day: str, class_id: str, gender: str):
         "engagement_percent": engagement_percent,
         "participation_rate": participation_rate,
         "trend": "increasing",  # Simplified
-        "benchmark": settings.ENGAGEMENT_BENCHMARK,
-        "performance": "above_benchmark" if engagement_percent > settings.ENGAGEMENT_BENCHMARK else "below_benchmark"
     }
 
 def get_student_performance_rankings(db: Session, class_id: str, gender: str, day: str, limit: int):

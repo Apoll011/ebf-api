@@ -5,81 +5,6 @@ import uuid
 from datetime import date, timedelta
 from sqlalchemy import func, case
 import statistics
-import threading
-from functools import wraps
-import inspect
-from .database import SessionLocal
-import logging
-
-# Caching mechanism for statistics
-stats_cache = {}
-cache_lock = threading.Lock()
-logger = logging.getLogger(__name__)
-
-def _get_db_session_for_thread():
-    return SessionLocal()
-
-def _update_cache_in_background(func, cache_key, *args, **kwargs):
-    """
-    This function runs in a separate thread to update the cache.
-    It creates a new DB session for the thread.
-    """
-    logger.info(f"Background cache refresh started for {cache_key}")
-    db = _get_db_session_for_thread()
-    try:
-        sig = inspect.signature(func)
-        bound_args = sig.bind(*args, **kwargs)
-        bound_args.apply_defaults()
-        
-        arguments = bound_args.arguments
-        arguments['db'] = db
-        
-        result = func(**arguments)
-
-        with cache_lock:
-            stats_cache[cache_key] = result
-        logger.info(f"Background cache refresh finished for {cache_key}")
-    except Exception as e:
-        logger.error(f"Error during background cache refresh for {cache_key}: {e}", exc_info=True)
-    finally:
-        db.close()
-
-def cache_stat(func):
-    """
-    A decorator to cache the result of a statistics function.
-    On cache hit, it returns the cached value and spawns a thread to refresh the cache.
-    On cache miss, it computes the value, caches it, and returns it.
-    It uses a lock to prevent dog-piling on cache misses.
-    """
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        sig = inspect.signature(func)
-        bound_args = sig.bind(*args, **kwargs)
-        
-        key_parts = [func.__name__]
-        for param_name, param_value in bound_args.arguments.items():
-            if param_name == 'db':
-                continue
-            key_parts.append(f"{param_name}={repr(param_value)}")
-            
-        cache_key = ":".join(key_parts)
-
-        if cache_key in stats_cache:
-            thread = threading.Thread(target=_update_cache_in_background, args=(func, cache_key, *args), kwargs=kwargs)
-            thread.daemon = True
-            thread.start()
-            return stats_cache[cache_key]
-        
-        with cache_lock:
-            # Double-check after acquiring the lock
-            if cache_key in stats_cache:
-                return stats_cache[cache_key]
-
-            result = func(*args, **kwargs)
-            stats_cache[cache_key] = result
-            return result
-            
-    return wrapper
 
 def get_user_by_username(db: Session, username: str):
     return db.query(models.User).filter(models.User.username == username).first()
@@ -254,25 +179,20 @@ def create_audit_log(db: Session, user_id: int, action: str, details: str):
     db.refresh(db_log)
     return db_log
 
-@cache_stat
 def get_average_daily_attendance(db: Session, start_date: date, end_date: date):
     total_attendance = db.query(func.count(models.Points.id)).filter(models.Points.award_date.between(start_date, end_date), models.Points.presence == True).scalar()
     num_days = (date.today() - start_date).days + 1
     return total_attendance / num_days if num_days > 0 else 0
 
-@cache_stat
 def get_total_points_awarded(db: Session):
     return db.query(func.sum(models.Points.total)).scalar() or 0
 
-@cache_stat
 def get_daily_attendance(db: Session, day: date):
     return db.query(func.count(models.Points.id)).filter(models.Points.award_date == day, models.Points.presence == True).scalar()
 
-@cache_stat
 def get_daily_points(db: Session, day: date):
     return db.query(func.sum(models.Points.total)).filter(models.Points.award_date == day).scalar() or 0
 
-@cache_stat
 def get_daily_attendance_stats(db: Session, target_date: date, class_id: str = None):
     base_query = db.query(models.Points).filter(models.Points.award_date == target_date)
     if class_id:
@@ -299,7 +219,6 @@ def get_daily_attendance_stats(db: Session, target_date: date, class_id: str = N
         "late_arrivals": 0  # Cannot be implemented without arrival time data
     }]
 
-@cache_stat
 def get_detailed_today_stats(db: Session):
     today = date.today()
     start_of_week = today - timedelta(days=today.weekday())
@@ -335,7 +254,6 @@ def get_detailed_today_stats(db: Session):
         "upcoming_activities": 2 # Static for now
     }
 
-@cache_stat
 def get_registration_statistics(db: Session):
     total_students = db.query(models.Student).count()
     
@@ -355,7 +273,6 @@ def get_registration_statistics(db: Session):
         "registration_completion_rate": 100.0 # Assuming all fields are required for creation
     }
 
-@cache_stat
 def get_registration_demographics(db: Session):
     age_dist = db.query(models.Student.age, func.count(models.Student.id).label("count")).group_by(models.Student.age).order_by(models.Student.age).all()
     gender_dist = db.query(models.Student.gender, func.count(models.Student.id).label("count")).group_by(models.Student.gender).all()
@@ -373,7 +290,6 @@ def get_registration_demographics(db: Session):
         "class_distribution": {cls: {"count": c, "percentage": round(c/total_students*100, 1)} for cls, c in class_dist}
     }
 
-@cache_stat
 def get_today_summary(db: Session):
     today = date.today()
     present_count = get_daily_attendance(db, today)
@@ -399,7 +315,6 @@ def get_today_summary(db: Session):
         "activities_status": {"completed": 6, "in_progress": 1, "upcoming": 1} # Static for now
     }
 
-@cache_stat
 def get_students_present_today(db: Session):
     today = date.today()
     present_students = db.query(models.Student).join(models.Points).filter(models.Points.award_date == today, models.Points.presence == True).all()
@@ -417,7 +332,6 @@ def get_students_present_today(db: Session):
         "late_arrivals": 4 # Static for now
     }
 
-@cache_stat
 def get_event_engagement(db: Session, day: str, class_id: str, gender: str):
     base_query = db.query(models.Points)
     student_query = db.query(models.Student)
@@ -451,7 +365,6 @@ def get_event_engagement(db: Session, day: str, class_id: str, gender: str):
         "trend": "increasing",  # Simplified
     }
 
-@cache_stat
 def get_student_performance_rankings(db: Session, class_id: str, gender: str, day: str, limit: int):
     query = db.query(models.Student).order_by(models.Student.total_points.desc())
     if class_id:
@@ -480,7 +393,6 @@ def get_student_performance_rankings(db: Session, class_id: str, gender: str, da
         })
     return response
 
-@cache_stat
 def get_class_performance_comparison(db: Session):
     response = []
     for group_id, group_name in settings.AGE_GROUPS.items():
@@ -507,7 +419,6 @@ def get_class_performance_comparison(db: Session):
         })
     return response
 
-@cache_stat
 def get_points_summary_by_category(db: Session, day: str, class_id: str, gender: str):
     base_query = db.query(models.Points)
     if class_id:
@@ -536,7 +447,6 @@ def get_points_summary_by_category(db: Session, day: str, class_id: str, gender:
         })
     return response
 
-@cache_stat
 def get_daily_points_trends(db: Session, include_projections: bool, class_id: str):
     base_query = db.query(models.Points.award_date, func.sum(models.Points.total).label("total_points"))
     if class_id:
@@ -567,7 +477,6 @@ def get_daily_points_trends(db: Session, include_projections: bool, class_id: st
 
     return response
 
-@cache_stat
 def get_event_points_distribution(db: Session):
     points_data = db.query(models.Student.total_points).all()
     points = [p[0] for p in points_data]
@@ -589,7 +498,6 @@ def get_event_points_distribution(db: Session):
         "top_score": max(points)
     }
 
-@cache_stat
 def get_performance_analysis(db: Session):
     male_students = db.query(models.Student).filter(models.Student.gender == 'male').count()
     female_students = db.query(models.Student).filter(models.Student.gender == 'female').count()
@@ -617,7 +525,6 @@ def get_performance_analysis(db: Session):
         }
     }
 
-@cache_stat
 def get_event_predictions(db: Session):
     start_of_week = date.today() - timedelta(days=date.today().weekday())
     days_elapsed = (date.today() - start_of_week).days + 1

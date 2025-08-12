@@ -10,7 +10,7 @@ router = APIRouter()
 def get_event_dates():
     today = date.today()
     start_of_week = today - timedelta(days=today.weekday())
-    end_of_week = start_of_week + timedelta(days=6)
+    end_of_week = start_of_week + timedelta(days=4)
     return start_of_week, end_of_week
 
 @router.get("/event/summary", summary="Get event summary")
@@ -19,15 +19,15 @@ def get_event_summary(db: Session = Depends(dependencies.get_db)):
     total_students = db.query(models.Student).count()
     
     return {
-        "event_name": "Summer Week Program 2025",
+        "event_name": "Escola Biblica de Ferias 2025",
         "start_date": start_date.isoformat(),
         "end_date": end_date.isoformat(),
         "current_day": (date.today() - start_date).days + 1,
-        "total_days": 7,
+        "total_days": 5,
         "total_registered": total_students,
         "average_daily_attendance": crud.get_average_daily_attendance(db, start_date, end_date),
         "total_points_awarded": crud.get_total_points_awarded(db),
-        "completion_percentage": round(((date.today() - start_date).days + 1) / 7 * 100, 1)
+        "completion_percentage": round(((date.today() - start_date).days + 1) / 5 * 100, 1)
     }
 
 @router.get("/event/progress", summary="Get event progress")
@@ -49,8 +49,8 @@ def get_event_progress(db: Session = Depends(dependencies.get_db)):
 
     return {
         "days_completed": days_completed,
-        "days_remaining": 7 - days_completed,
-        "overall_progress": round(days_completed / 7 * 100, 1),
+        "days_remaining": 5 - days_completed,
+        "overall_progress": round(days_completed / 5 * 100, 1),
         "milestones": milestones
     }
 

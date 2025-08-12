@@ -16,13 +16,13 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="EBF Management API",
-    description="A simple API to manage students, points, and statistics.",
-    version="1.0.0",
+    description="A simple API to manage students, points, and statistics for EBF.",
+    version="1.2.0",
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "*"],
+    allow_origins=["http://localhost:5173", "https://https://ebf-client.vercel.app", "*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -125,6 +125,7 @@ def delete_student(student_id: str, db: Session = Depends(get_db), current_user:
 def award_daily_points(student_id: str, points_create: schemas.PointsCreate, db: Session = Depends(get_db), current_user: models.User = Depends(dependencies.get_current_user)):
     if current_user.role not in ["admin", "teacher"]:
         raise HTTPException(status_code=403, detail="Not enough permissions")
+    print(points_create)
     student = crud.award_daily_points(db, student_id=student_id, points_create=points_create)
     if student is None:
         raise HTTPException(status_code=404, detail="Student not found")
@@ -145,7 +146,6 @@ def adjust_student_points(student_id: str, adjustment: schemas.PointAdjustment, 
 # Class & Teacher Management
 @app.get("/classes", response_model=List[schemas.ClassResponse])
 def list_classes(db: Session = Depends(get_db)):
-    # This data is static for now, but could be moved to a separate table
     classes = [
         {"id": "0-6", "name": "Nursery", "description": "Early childhood development and basic learning", "min_age": 0, "max_age": 6},
         {"id": "7-9", "name": "Beginners", "description": "Foundation skills and structured learning", "min_age": 7, "max_age": 9},
@@ -164,7 +164,7 @@ def get_class_teachers(class_id: str):
     # Placeholder data
     teachers = {
         "7-9": [
-            {"id": "teacher-001", "name": "Sarah Johnson", "phone": "+1234567890", "email": "sarah.johnson@school.edu", "specialization": "Elementary Education", "years_experience": 8}
+            {"id": "teacher-001", "name": "Sarah Johnson"}
         ]
     }
     return teachers.get(class_id, [])

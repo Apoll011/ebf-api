@@ -121,8 +121,4 @@ class ClassResponse(BaseModel):
 class TeacherResponse(BaseModel):
     id: str
     name: str
-    phone: str
-    email: str
-    specialization: str
-    years_experience: int
 
